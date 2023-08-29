@@ -1,0 +1,9 @@
+In this part of the assignment, we have to create a bash script code, intended to perform some operations (XOR, Multuply and Compare).
+The Bash script creates a "Result" directory if it doesn't exist.
+It reads lines from "input.txt," breaking them up into elements of an array "arr".
+The data in the "input.txt" is in the format number1 number2 operation (say: 2 3 xor), which is interpret as performing the operation with the two numbers written after the numbers (xor in this case).
+It determines the XOR, product of numbers or makes comparisons, depending on the operations specified in the "input.txt" file.
+The output/result of the operations is stored in a text file, "output.txt", created through the bash script only, in the directory "Result".
+When using "compare," it establishes whether two numbers are equal and, if not, which is larger.
+For each line, this process is repeated, producing output based on the given operations.
+The script makes sure that operations are handled in a systematic manner, sending the results to the right output file.

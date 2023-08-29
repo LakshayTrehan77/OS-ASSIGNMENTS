@@ -1,0 +1,10 @@
+Working of the Code
+
+1. date.c
+The supplied C software implements a command-line utility that manipulates and displays file modification times. It accepts a filename and several arguments. Along with numeric modifications, it offers time adjustments based on specified terms such as "yesterday" and "next_hour." It uses fork() for some tasks to start child processes. Depending on the command-line arguments, it displays file modification times in either standard or RFC 5322 format. The program is a multipurpose utility demonstrating command-line argument parsing, time management, and process management.
+
+2. dir.c
+A program that imitates the custom command "dir," which creates a directory and manages settings like removal and verbosity, is defined by the provided C code. The program parses the command-line parameters to identify whether options like -r (removal) and -v (verbosity) are used. It either creates a new directory, deletes an existing one, or throws the necessary errors depending on the arguments and the directory's status. It demonstrates synchronization between parent and kid by using signals and a child process, signaling when the child completes its operation. The software integrates system calls, process management, and signal handling to provide a simple directory management utility.
+
+3. word.c
+The offered C code uses a combination of forking and system calls to conduct word count operations on text files. It has options to compute the difference in word counts between two files as well as to count words with and without newline characters.
