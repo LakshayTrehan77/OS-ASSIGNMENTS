@@ -1,136 +1,146 @@
-/* Program Dining Philosopher
+#include <stdio.h>
+#include <pthread.h>
+#include <stdlib.h>
+#include <unistd.h>
 
-Names: Lester Zhang, Chanakya Valluri, Rei Sturm
-
-Compile program with gcc -o diningphil3 -pthread diningphil3.c
-Run executable ./diningphil3
-*/
-
-#include<stdio.h>
-#include<string.h>
-#include<pthread.h>
-#include<stdlib.h>
-#include<unistd.h>
-
-// Definitions for number of philosophers,
-// left philosopher and right philosopher
 #define NUMPHIL 5
-#define LEFT ((id-1)+NUMPHIL) % 5
-#define RIGHT (id+1) % 5
+#define LEFT id
+#define RIGHT (id + 1) % NUMPHIL
+#define CENTER_BOWL_1 0
+#define CENTER_BOWL_2 1
 
-//Array for number of philosophers and Enum for their states
-enum{THINKING, HUNGRY, EATING} state[NUMPHIL];
-int identity[5] = {0,1,2,3,4};
+enum { THINKING, HUNGRY, EATING } state[NUMPHIL];
+int identity[NUMPHIL] = {0, 1, 2, 3, 4};
+int forks[NUMPHIL];
+// Use a struct to represent a bowl with availability status
+struct Bowl {
+    int available;
+};
+struct Bowl bowls[2] = {{1}, {1}}; // Two bowls at the center, initially available
+int current_bowl ;
 
-// Mutex, condition variable array for each philosopher,
-// and the phillosphers threads array
 pthread_mutex_t lock;
 pthread_cond_t cond[NUMPHIL];
 pthread_t phil[NUMPHIL];
 
-// Funtion declarations
-void think(int id);
-void pickup_forks(int id);
-void eat(int id);
-void return_forks(int id);
-void *philosopher(void *num);
+void thinking(int id);
+void eating(int id);
+void pickup_forks_and_bowl(int id);
+void return_forks_and_bowl(int id);
+void* philosopher(void* num);
 
-int main(){
-	//Initialize the mutex lock and conditional variable
-	int i=0;
+int main() {
+    int i = 0;
 
-	if (pthread_mutex_init(&lock,NULL) != 0) {
-		printf("\n mutex init has failed\n");
-		return 1;
-	}
+    if (pthread_mutex_init(&lock, NULL) != 0) {
+        printf("\n mutex init has failed\n");
+        return 1;
+    }
 
-	//Create the five philosophers threads
-	for (i = 0; i < NUMPHIL; i++) {
-		if(pthread_cond_init(&cond[i], NULL)!=0){
-			printf("\n cond init has failed\n");
-			return 1;
-		}
-	}
+    for (i = 0; i < NUMPHIL; i++) {
+        if (pthread_cond_init(&cond[i], NULL) != 0) {
+            printf("\n cond init has failed\n");
+            return 1;
+        }
+    }
 
-	//Create the five philosophers threads
-	for (i = 0; i < NUMPHIL; i++) {
-		pthread_create(&phil[i], NULL, philosopher, &identity[i]);
-	}
+    for (i = 0; i < NUMPHIL; i++) {
+        pthread_create(&phil[i], NULL, philosopher, &identity[i]);
+    }
 
-	//Join all five philosophers threads
-	for (i = 0; i < NUMPHIL; i++) {
-		pthread_join(phil[i], NULL);
-	}
+    for (i = 0; i < NUMPHIL; i++) {
+        pthread_join(phil[i], NULL);
+    }
 
-	//Destroy the mutex and conditional variables
-	pthread_mutex_destroy(&lock);
-	for (i = 0; i < NUMPHIL; i++) {
-		pthread_cond_destroy(&cond[i]);
-	}
-	return 0;
+    pthread_mutex_destroy(&lock);
+    for (i = 0; i < NUMPHIL; i++) {
+        pthread_cond_destroy(&cond[i]);
+    }
+
+    return 0;
 }
 
-//Philosopher wastes time to think now
-void think(int id){
-	int thinkTime = ((rand()) % 3) +1;
+void thinking(int id) {
+    int thinkTime = (rand() % 3) + 1;
 
-	printf("Philosopher %d is thinking for %d seconds\n", id, thinkTime);
-	sleep(thinkTime);
-	printf("Philosopher %d reappears from sleep from thinking\n", id);
+    printf("Philosopher %d is thinking for %d seconds\n", id, thinkTime);
+    sleep(thinkTime);
+    printf("Philosopher %d reappears from sleep from thinking\n", id);
 }
 
-//Checks to see if the philopher can pick up thier adjacent forks to eat
-//If succesful, change enum state to HUNGRY FIRST AND EATING AFTER
-//If not, philosopher is blocked by their conditional variable cond[id]
-void pickup_forks(int id){
-	int left = LEFT;
-	int right = RIGHT;
-	pthread_mutex_lock(&lock);
-	state[id] = HUNGRY;
+void eating(int id) {
+    int eatingTime = (rand() % 3) + 1;
 
-	while((state[id] == HUNGRY) && ((state[left] == EATING) || (state[right] == EATING))){
-		printf("Philosopher %i is hungry and waiting to pickup forks to eat \n", id);
-		pthread_cond_wait(&cond[id], &lock);
-	}
-	state[id] = EATING;
-	printf("Philosopher %d is allowed to eat now \n", id);
-	pthread_mutex_unlock(&lock);
+    printf("Philosopher %d is eating with forks %d and %d and bowl %d for %d seconds\n", id, LEFT, RIGHT, current_bowl, eatingTime);
+    sleep(eatingTime);
+    printf("Philosopher %d reappears from sleep from eating\n", id);
 }
 
-//After getting the forks, the philosopher can eat now
-void eat(int id){
-	int eatingTime = ((rand()) % 3) +1;
+void pickup_forks_and_bowl(int id) {
+    pthread_mutex_lock(&lock);
+    state[id] = HUNGRY;
 
-	printf("Philosopher %d is eating for %d seconds\n", id, eatingTime);
-	sleep(eatingTime);
-	printf("Philosopher %d reappears from sleep from eating\n", id);
+    while ((state[id] == HUNGRY) && (state[LEFT] == EATING || state[RIGHT] == EATING || forks[RIGHT] == 1 || forks[LEFT] == 1 || (bowls[CENTER_BOWL_1].available == 0 && bowls[CENTER_BOWL_2].available == 0))) {
+        if (state[LEFT] == EATING || state[RIGHT] == EATING) {
+            printf("Philosopher %d is hungry and waiting for forks\n", id);
+        } else if (!bowls[CENTER_BOWL_1].available && !bowls[CENTER_BOWL_2].available) {
+            printf("Philosopher %d is hungry and waiting for bowls\n", id);
+        } else if (!bowls[CENTER_BOWL_1].available) {
+            printf("Philosopher %d is hungry and waiting for bowl %d\n", id, CENTER_BOWL_1);
+        } else if (!bowls[CENTER_BOWL_2].available) {
+            printf("Philosopher %d is hungry and waiting for bowl %d\n", id, CENTER_BOWL_2);
+        } else if (forks[LEFT] == 0 && forks[RIGHT] == 0) {
+            printf("Philosopher %d is hungry and waiting for forks %d and %d\n", id, LEFT, RIGHT);
+        } else {
+            printf("Philosopher %d is hungry and waiting for forks and bowls\n", id);
+        }
+        pthread_cond_wait(&cond[id], &lock);
+    }
+
+    forks[LEFT] = 1;
+    forks[RIGHT] = 1;
+
+    // Choose the available bowl
+    if (bowls[CENTER_BOWL_1].available) {
+        current_bowl = CENTER_BOWL_1;
+    } else if (bowls[CENTER_BOWL_2].available) {
+        current_bowl = CENTER_BOWL_2;
+    }
+
+    bowls[current_bowl].available = 0; // Set the bowl as not available
+    state[id] = EATING;
+    printf("Philosopher %d is allowed to eat now with forks %d and %d and bowl %d\n", id, LEFT, RIGHT, current_bowl);
+    pthread_mutex_unlock(&lock);
 }
 
-//After the philosophers eat, put down the forks and change enum state to THINKING.
-//Signal the current left and right phillosphers blocked by their conditional
-//variable to have a chance to see if they can eat now
-void return_forks(int id){
-	int left = LEFT;
-	int right = RIGHT;
-	pthread_mutex_lock(&lock);
-	state[id]= THINKING;
 
-	printf("Philosopher %d has put down forks\n", id);
-	pthread_cond_signal(&cond[left]);
-	printf("Philosopher %d signaled philosopher %d to see if it can eat\n", id, left);
-	pthread_cond_signal(&cond[right]);
-	printf("Philosopher %d signaled philosopher %d to see if it can eat\n", id, right);
-	pthread_mutex_unlock(&lock);
+void return_forks_and_bowl(int id) {
+    pthread_mutex_lock(&lock);
+    state[id] = THINKING;
+
+    forks[LEFT] = 0;
+    forks[RIGHT] = 0;
+        // Choose the available bowl
+         // Choose the available bowl
+    
+    
+    bowls[current_bowl].available = 1; // Set the bowl as available
+    printf("Philosopher %d has put down forks %d and %d and bowl %d\n", id, LEFT, RIGHT, current_bowl);
+    pthread_cond_signal(&cond[LEFT]);
+    pthread_cond_signal(&cond[RIGHT]);
+    pthread_cond_signal(&cond[CENTER_BOWL_1]);
+    pthread_cond_signal(&cond[CENTER_BOWL_2]);
+    printf("Philosopher %d signaled philosophers to see if they can eat\n", id);
+    pthread_mutex_unlock(&lock);
 }
 
-//Main philosopher method  creating the five phillospher threads
-void* philosopher(void* num){
-	int id = *((int *) num);
+void* philosopher(void* num) {
+    int id = *((int*)num);
 
-	while(1){
-		think(id);
-		pickup_forks(id);
-		eat(id);
-		return_forks(id);
-	}
+    while (1) {
+        thinking(id);
+        pickup_forks_and_bowl(id);
+        eating(id);
+        return_forks_and_bowl(id);
+    }
 }
