@@ -23,6 +23,7 @@ pthread_mutex_t lock;
 pthread_cond_t cond[NUMPHIL];
 pthread_t phil[NUMPHIL];
 
+
 void thinking(int id);
 void eating(int id);
 void pickup_forks_and_bowl(int id);
@@ -65,15 +66,15 @@ void thinking(int id) {
 
     printf("Philosopher %d is thinking for %d seconds\n", id, thinkTime);
     sleep(thinkTime);
-    printf("Philosopher %d reappears from sleep from thinking\n", id);
+    
 }
 
 void eating(int id) {
     int eatingTime = (rand() % 3) + 1;
 
-    printf("Philosopher %d is eating with forks %d and %d and bowl %d for %d seconds\n", id, LEFT, RIGHT, current_bowl, eatingTime);
+    printf("Philosopher %d is eating for %d seconds\n", id, eatingTime);
     sleep(eatingTime);
-    printf("Philosopher %d reappears from sleep from eating\n", id);
+    
 }
 
 void pickup_forks_and_bowl(int id) {
@@ -81,19 +82,7 @@ void pickup_forks_and_bowl(int id) {
     state[id] = HUNGRY;
 
     while ((state[id] == HUNGRY) && (state[LEFT] == EATING || state[RIGHT] == EATING || forks[RIGHT] == 1 || forks[LEFT] == 1 || (bowls[CENTER_BOWL_1].available == 0 && bowls[CENTER_BOWL_2].available == 0))) {
-        if (state[LEFT] == EATING || state[RIGHT] == EATING) {
-            printf("Philosopher %d is hungry and waiting for forks\n", id);
-        } else if (!bowls[CENTER_BOWL_1].available && !bowls[CENTER_BOWL_2].available) {
-            printf("Philosopher %d is hungry and waiting for bowls\n", id);
-        } else if (!bowls[CENTER_BOWL_1].available) {
-            printf("Philosopher %d is hungry and waiting for bowl %d\n", id, CENTER_BOWL_1);
-        } else if (!bowls[CENTER_BOWL_2].available) {
-            printf("Philosopher %d is hungry and waiting for bowl %d\n", id, CENTER_BOWL_2);
-        } else if (forks[LEFT] == 0 && forks[RIGHT] == 0) {
-            printf("Philosopher %d is hungry and waiting for forks %d and %d\n", id, LEFT, RIGHT);
-        } else {
-            printf("Philosopher %d is hungry and waiting for forks and bowls\n", id);
-        }
+       
         pthread_cond_wait(&cond[id], &lock);
     }
 
@@ -109,7 +98,7 @@ void pickup_forks_and_bowl(int id) {
 
     bowls[current_bowl].available = 0; // Set the bowl as not available
     state[id] = EATING;
-    printf("Philosopher %d is allowed to eat now with forks %d and %d and bowl %d\n", id, LEFT, RIGHT, current_bowl);
+   
     pthread_mutex_unlock(&lock);
 }
 
@@ -122,15 +111,18 @@ void return_forks_and_bowl(int id) {
     forks[RIGHT] = 0;
         // Choose the available bowl
          // Choose the available bowl
-    
-    
+    //Setting the value of the current bowl to be returned by the PHISLOSPHER
+    if (current_bowl == 1){
+        current_bowl--;
+    }
+    else {
+        current_bowl++;
+    }
     bowls[current_bowl].available = 1; // Set the bowl as available
-    printf("Philosopher %d has put down forks %d and %d and bowl %d\n", id, LEFT, RIGHT, current_bowl);
     pthread_cond_signal(&cond[LEFT]);
     pthread_cond_signal(&cond[RIGHT]);
     pthread_cond_signal(&cond[CENTER_BOWL_1]);
     pthread_cond_signal(&cond[CENTER_BOWL_2]);
-    printf("Philosopher %d signaled philosophers to see if they can eat\n", id);
     pthread_mutex_unlock(&lock);
 }
 
