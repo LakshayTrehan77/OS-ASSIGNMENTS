@@ -1,3 +1,7 @@
+# CONTRIBUTORS
+1. LAKSHAY TREHAN (2022267)
+2. NISHANT SINGH (2022595)
+
 # PASSENGER-CAR RIDE SIMULATION USING SEMAPHORES
 
 This question is based on the idea of monitoring a car's passenger simulation. The car waits until it is fully loaded with the passengers. Then only the ride of the car can start
