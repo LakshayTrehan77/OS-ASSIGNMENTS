@@ -1,3 +1,7 @@
+# CONTRIBUTORS
+1. LAKSHAY TREHAN (2022267)
+2. NISHANT SINGH (2022595)
+
 # CAR-BRIDGE MANAGEMENT PROBLEM USING SEMAPHORES
 
     - This code is based on the problem of bridge connecting two sides of a river. 
