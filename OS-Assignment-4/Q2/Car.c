@@ -5,7 +5,7 @@
 #include <semaphore.h>
 #include <time.h>
 
-#define MAX_PASSENGERS 10
+#define MAX_PASSENGERS (10000000)
 
 pthread_mutex_t car_lock; // mutex to control access of the 'boarded' and 'unboarded' variables
 sem_t board_queue; // semaphore to ensure boarding of passengers
