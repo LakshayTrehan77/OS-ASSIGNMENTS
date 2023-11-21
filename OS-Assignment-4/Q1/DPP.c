@@ -12,18 +12,18 @@
 enum { THINKING, HUNGRY, EATING } state[NUMPHIL];
 int identity[NUMPHIL] = {0, 1, 2, 3, 4};
 int forks[NUMPHIL];
-// Use a struct to represent a bowl with availability status
+// Use a struct to represent a bowl with availability status 
 struct Bowl {
     int available;
 };
 struct Bowl bowls[2] = {{1}, {1}}; // Two bowls at the center, initially available
 int current_bowl ;
-
+// Defining locks and Conditional Variables
 pthread_mutex_t lock;
 pthread_cond_t cond[NUMPHIL];
 pthread_t phil[NUMPHIL];
 
-
+//Defining Essential Functions
 void thinking(int id);
 void eating(int id);
 void pickup_forks_and_bowl(int id);
