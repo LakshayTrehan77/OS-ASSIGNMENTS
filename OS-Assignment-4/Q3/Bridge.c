@@ -30,7 +30,10 @@ bridge_t shared_bridge = {
 };
 
 int count;
+int left_print_statement;
+int right_print_statement;
 int left_cars, right_cars;
+
 
 void arrive(bridge_t *bridge, int direction, int car_id)
 {
@@ -49,17 +52,27 @@ void arrive(bridge_t *bridge, int direction, int car_id)
 
 void cross(bridge_t *bridge, int car_id)
 {
+
+
     sem_wait(&bridge->max_cars_sem); // Wait if maximum cars are already on the bridge
 
     sem_wait(&bridge->mutex);
+    
 
-    if ((bridge->direction == EAST && count < 5 && count < left_cars))
+    if (((bridge->direction == EAST && count < 5 && right_print_statement < right_cars)))
     {
+        
         printf("Right Car %d Crossing the bridge\n", car_id);
+        right_print_statement++;
+        
     }
-    else if (bridge->direction == WEST && count < 5 && count < right_cars)
+    else if ((bridge->direction == WEST && count < 5 && left_print_statement < left_cars )|| left_print_statement<left_cars)
     {
         printf("Left Car %d Crossing the bridge\n", car_id);
+        left_print_statement++;
+    }
+    else if (right_print_statement<right_cars){
+        printf("Right Car %d Crossing the bridge\n", car_id);
     }
 
     count++;
@@ -76,7 +89,6 @@ void cross(bridge_t *bridge, int car_id)
 
     sem_post(&bridge->max_cars_sem); // Release the semaphore after crossing
 }
-
 
 void leave(bridge_t *bridge, int car_id)
 {
@@ -141,13 +153,16 @@ int run(int nw, int ne)
 
 int main(int argc, char **argv)
 {
-    
-
     printf("Enter the number of Left cars: ");
     scanf("%d", &left_cars);
 
     printf("Enter the number of Right cars: ");
     scanf("%d", &right_cars);
 
+    // Set the direction of the shared bridge to the left if left_cars are greater than right_cars
+    
+    
+
     return run(left_cars, right_cars);
 }
+
