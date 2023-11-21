@@ -7,48 +7,68 @@
 #define EAST 1
 #define WEST 2
 
+typedef struct car
+{
+    int id;
+    int direction;
+} car_t;
+
 typedef struct bridge
 {
-    int cars;
     int direction;
+    int max_cars;
     sem_t mutex;
     sem_t max_cars_sem;
+    car_t *car_list;
 } bridge_t;
 
 bridge_t shared_bridge = {
-    .cars = 0,
-    .direction = WEST,
+    .direction = EAST,
+    .max_cars = 5,
     .mutex = PTHREAD_MUTEX_INITIALIZER,
     .max_cars_sem = PTHREAD_MUTEX_INITIALIZER,
 };
 
-void arrive(bridge_t *bridge, int direction)
+int count;
+int left_cars, right_cars;
+
+void arrive(bridge_t *bridge, int direction, int car_id)
 {
     sem_wait(&bridge->mutex);
 
-    while (bridge->cars > 0 && (bridge->cars > 2 || bridge->direction != direction))
+    while ((bridge->direction != direction) && (bridge->car_list[car_id - 1].direction != 0))
     {
         sem_post(&bridge->mutex);
         sem_wait(&bridge->mutex);
     }
 
-    if (bridge->cars == 0)
-        bridge->direction = direction;
+    bridge->car_list[car_id - 1].direction = direction;
 
-    bridge->cars++;
     sem_post(&bridge->mutex);
 }
 
-void cross(bridge_t *bridge)
+void cross(bridge_t *bridge, int car_id)
 {
     sem_wait(&bridge->max_cars_sem); // Wait if maximum cars are already on the bridge
 
     sem_wait(&bridge->mutex);
 
-    if (bridge->direction == 1)
-        printf("Crossing East ... number of Cars on bridge = %d \n", bridge->cars);
-    else
-        printf("Crossing West ... number of Cars on bridge = %d \n", bridge->cars);
+    if ((bridge->direction == EAST && count < 5 && count < left_cars))
+    {
+        printf("Right Car %d Crossing the bridge\n", car_id);
+    }
+    else if (bridge->direction == WEST && count < 5 && count < right_cars)
+    {
+        printf("Left Car %d Crossing the bridge\n", car_id);
+    }
+
+    count++;
+
+    if (count == 5)
+    {
+        count = 0;
+        bridge->direction = (bridge->direction == EAST) ? WEST : EAST;
+    }
 
     sem_post(&bridge->mutex);
 
@@ -57,31 +77,34 @@ void cross(bridge_t *bridge)
     sem_post(&bridge->max_cars_sem); // Release the semaphore after crossing
 }
 
-void leave(bridge_t *bridge)
+
+void leave(bridge_t *bridge, int car_id)
 {
     sem_wait(&bridge->mutex);
 
-    bridge->cars--;
+    bridge->car_list[car_id - 1].direction = 0;
 
     sem_post(&bridge->mutex);
 }
 
-void drive(bridge_t *bridge, int direction)
+void drive(bridge_t *bridge, int direction, int car_id)
 {
-    arrive(bridge, direction);
-    cross(bridge);
-    leave(bridge);
+    arrive(bridge, direction, car_id);
+    cross(bridge, car_id);
+    leave(bridge, car_id);
 }
 
-void *east(void *data)
+void *left(void *data)
 {
-    drive((bridge_t *)data, EAST);
+    car_t *car = (car_t *)data;
+    drive(&shared_bridge, WEST, car->id);
     return NULL;
 }
 
-void *west(void *data)
+void *right(void *data)
 {
-    drive((bridge_t *)data, WEST);
+    car_t *car = (car_t *)data;
+    drive(&shared_bridge, EAST, car->id);
     return NULL;
 }
 
@@ -89,16 +112,21 @@ int run(int nw, int ne)
 {
     int i, n = nw + ne;
     pthread_t thread[n];
+    shared_bridge.car_list = malloc(n * sizeof(car_t));
 
     sem_init(&shared_bridge.mutex, 0, 1);
-    sem_init(&shared_bridge.max_cars_sem, 0, 5);
+    sem_init(&shared_bridge.max_cars_sem, 0, shared_bridge.max_cars);
 
     for (i = 0; i < n; i++)
-        if (pthread_create(&thread[i], NULL, i < nw ? east : west, &shared_bridge))
+    {
+        shared_bridge.car_list[i].id = i + 1;
+        shared_bridge.car_list[i].direction = 0;
+        if (pthread_create(&thread[i], NULL, i < nw ? left : right, &shared_bridge.car_list[i]))
         {
             printf("thread creation failed\n");
             return EXIT_FAILURE;
         }
+    }
 
     for (i = 0; i < n; i++)
         if (thread[i])
@@ -106,39 +134,20 @@ int run(int nw, int ne)
 
     sem_destroy(&shared_bridge.mutex);
     sem_destroy(&shared_bridge.max_cars_sem);
+    free(shared_bridge.car_list);
 
     return EXIT_SUCCESS;
 }
 
-// after compiling use ./bridge -e X -w Y
-// X: number of cars going to east
-// Y: number of cars going to west
-// use ./bridge -h for help
 int main(int argc, char **argv)
 {
-    int c, nw = 1, ne = 1;
-    while ((c = getopt(argc, argv, "e:w:h")) >= 0)
-    {
-        switch (c)
-        {
-        case 'e':
-            if ((ne = atoi(optarg)) <= 0)
-            {
-                fprintf(stderr, "Number of cars going east must be greater than 0\n");
-                exit(EXIT_FAILURE);
-            }
-            break;
-        case 'w':
-            if ((nw = atoi(optarg)) <= 0)
-            {
-                fprintf(stderr, "Number of cars going west must be greater than 0\n");
-                exit(EXIT_FAILURE);
-            }
-            break;
-        case 'h':
-            printf("Usage: bridge [-e east] [-w west] [-h]\n");
-            exit(EXIT_SUCCESS);
-        }
-    }
-    return run(nw, ne);
+    
+
+    printf("Enter the number of Left cars: ");
+    scanf("%d", &left_cars);
+
+    printf("Enter the number of Right cars: ");
+    scanf("%d", &right_cars);
+
+    return run(left_cars, right_cars);
 }
